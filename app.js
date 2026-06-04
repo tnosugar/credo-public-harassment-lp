@@ -404,12 +404,8 @@
       '</div></footer>';
   }
   function StickyCTA() {
-    return '' +
-      '<div class="sticky-cta">' +
-        '<button class="btn-stamp" data-scrollform>' + C.form.submit + ' ' + Ico.arrow + '</button>' +
-        '<a class="sphone" href="' + C.phoneHref + '" aria-label="Call us">' + Ico.phone(22) + '</a>' +
-      '</div>' +
-      '<div class="tidio-ghost" title="Chat (Tidio launcher placeholder)">' + Ico.chat(22) + '</div>';
+    // Mobile sticky CTA button + phone removed per request — chat launcher only.
+    return '<div class="tidio-ghost" title="Chat (Tidio launcher placeholder)">' + Ico.chat(22) + '</div>';
   }
 
   /* ======================================================================
@@ -419,7 +415,7 @@
   /* Variant A — Locked · paired (default) */
   function VariantA() {
     return '' +
-      '<div class="lp has-sticky" data-variant="a">' +
+      '<div class="lp" data-variant="a">' +
         '<section class="hero" id="top"><div class="container">' +
           '<div class="hero-grid">' +
             '<div>' +
@@ -477,7 +473,7 @@
   /* Variant C — Sticky conversion rail */
   function VariantC() {
     return '' +
-      '<div class="lp has-sticky" data-variant="c">' +
+      '<div class="lp" data-variant="c">' +
         '<section class="hero" id="top"><div class="container">' +
           '<div class="hero-grid">' +
             '<div>' +
