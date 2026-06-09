@@ -187,11 +187,16 @@
         }).join("");
       return '<div><label>' + s[k].label + '</label><select data-sit="' + k + '">' + opts + '</select></div>';
     }
-    // 2026-06-04: multi-select checkbox group for 'type'. Stored as array on state.sit.type.
+    // 2026-06-04 (revised): multi-select rendered as a dropdown field that mirrors
+    // the look of the single-select <select> dropdowns. Trigger shows the placeholder
+    // when empty, the comma-joined selection when not. Panel reveals the checkboxes.
     function multi(k) {
       var f = s[k];
       var selected = state.sit[k] || [];
-      var boxes = f.options.map(function (o, i) {
+      var display = selected.length === 0
+        ? '<span class="multi-dd-placeholder">' + esc(f.placeholder) + '</span>'
+        : '<span class="multi-dd-selected">' + esc(selected.join(", ")) + '</span>';
+      var boxes = f.options.map(function (o) {
         var checked = selected.indexOf(o) !== -1;
         return '<label class="multi-opt' + (checked ? " is-checked" : "") + '">' +
           '<input type="checkbox" data-multi="' + k + '" value="' + esc(o) + '"' + (checked ? " checked" : "") + '/>' +
@@ -199,16 +204,22 @@
           '<span class="multi-lbl">' + esc(o) + '</span>' +
           '</label>';
       }).join("");
-      return '<div class="multi-field">' +
-        '<label class="multi-q">' + f.label + '<span class="multi-hint">' + f.placeholder + '</span></label>' +
-        '<div class="multi-grid">' + boxes + '</div>' +
+      return '<div><label>' + f.label + '</label>' +
+        '<div class="multi-dd" data-multi-dd="' + k + '">' +
+          '<button type="button" class="multi-dd-trigger" data-multi-toggle="' + k + '" aria-haspopup="listbox" aria-expanded="false">' +
+            display +
+            '<span class="multi-dd-caret" aria-hidden="true">' +
+              '<svg viewBox="0 0 12 8" width="12" height="8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 1 6 7 11 1"/></svg>' +
+            '</span>' +
+          '</button>' +
+          '<div class="multi-dd-panel" role="listbox" aria-multiselectable="true" hidden>' + boxes + '</div>' +
+        '</div>' +
         '</div>';
     }
     return '' +
       '<p class="q">Tell us about the debt.</p>' +
       '<p class="qsub">A few details help an attorney assess your case before the call.</p>' +
-      '<div class="field row1">' + sel("count") + '</div>' +
-      '<div class="field">' + multi("type") + '</div>' +
+      '<div class="field row2">' + sel("count") + multi("type") + '</div>' +
       '<div class="field row2">' + sel("stage") + sel("security") + '</div>' +
       '<div class="field"><label>' + s.more.label + '</label>' +
         '<textarea data-sit="more" placeholder="' + esc(s.more.placeholder) + '">' + esc(state.sit.more) + '</textarea></div>';
@@ -576,7 +587,48 @@
         syncInlineSlider();
       });
     }
-    // 2026-06-04: multi-select handler for sit.type (array-valued).
+    // 2026-06-04 (revised): multi-select dropdown handlers — trigger toggles the panel,
+    // checkboxes mutate state.sit[k] (array), and the trigger display refreshes on each change.
+    function refreshMultiDisplay(dd) {
+      var k = dd.getAttribute("data-multi-dd");
+      var arr = state.sit[k] || [];
+      var disp = dd.querySelector(".multi-dd-trigger > span:first-child");
+      if (!disp) return;
+      var f = C.form.situationFields[k];
+      if (arr.length === 0) {
+        disp.outerHTML = '<span class="multi-dd-placeholder">' + esc(f.placeholder) + '</span>';
+      } else {
+        disp.outerHTML = '<span class="multi-dd-selected">' + esc(arr.join(", ")) + '</span>';
+      }
+    }
+    function closeAllMultiPanels(except) {
+      root.querySelectorAll(".multi-dd").forEach(function (dd) {
+        if (dd === except) return;
+        var trig = dd.querySelector(".multi-dd-trigger");
+        var panel = dd.querySelector(".multi-dd-panel");
+        if (trig) trig.setAttribute("aria-expanded", "false");
+        if (panel) panel.hidden = true;
+        dd.classList.remove("is-open");
+      });
+    }
+    root.querySelectorAll("[data-multi-toggle]").forEach(function (trigger) {
+      trigger.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var dd = trigger.closest(".multi-dd");
+        var panel = dd.querySelector(".multi-dd-panel");
+        var willOpen = panel.hidden;
+        closeAllMultiPanels(willOpen ? dd : null);
+        if (willOpen) {
+          panel.hidden = false;
+          trigger.setAttribute("aria-expanded", "true");
+          dd.classList.add("is-open");
+        } else {
+          panel.hidden = true;
+          trigger.setAttribute("aria-expanded", "false");
+          dd.classList.remove("is-open");
+        }
+      });
+    });
     root.querySelectorAll("[data-multi]").forEach(function (node) {
       var k = node.getAttribute("data-multi");
       if (!Array.isArray(state.sit[k])) state.sit[k] = [];
@@ -588,11 +640,24 @@
           var i = arr.indexOf(node.value);
           if (i !== -1) arr.splice(i, 1);
         }
-        // Toggle the parent's is-checked class so the chip styling tracks state.
         var parent = node.closest(".multi-opt");
         if (parent) parent.classList.toggle("is-checked", node.checked);
+        var dd = node.closest(".multi-dd");
+        if (dd) refreshMultiDisplay(dd);
       });
     });
+    // Click outside any open multi-select dropdown closes it.
+    if (!root._multiOutsideBound) {
+      root._multiOutsideBound = true;
+      document.addEventListener("click", function (e) {
+        if (e.target.closest(".multi-dd")) return;
+        closeAllMultiPanels(null);
+      });
+      // Esc closes any open panel.
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeAllMultiPanels(null);
+      });
+    }
     root.querySelectorAll("[data-sit]").forEach(function (node) {
       var k = node.getAttribute("data-sit");
       node.addEventListener("input", function () { state.sit[k] = node.value; });
