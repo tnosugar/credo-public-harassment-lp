@@ -73,8 +73,11 @@
     open: false,
     step: 0,
     amount: 8000,
-    sit: { count: "", type: "", stage: "", security: "", more: "" },
-    fields: { first: "", last: "", phone: "", email: "", address: "", city: "", state: "", zip: "", dob: "" }
+    // 2026-06-04: sit.type is an array now (multi-select). Other situation fields stay scalar.
+    sit: { count: "", type: [], stage: "", security: "", more: "" },
+    // 2026-06-04 (Sona's progressive-profiling note): lead on name/phone/email/state/ZIP only.
+    // address, city, DOB captured later during the call or client onboarding.
+    fields: { first: "", last: "", phone: "", email: "", state: "", zip: "" }
   };
 
   /* ======================================================================
@@ -184,10 +187,28 @@
         }).join("");
       return '<div><label>' + s[k].label + '</label><select data-sit="' + k + '">' + opts + '</select></div>';
     }
+    // 2026-06-04: multi-select checkbox group for 'type'. Stored as array on state.sit.type.
+    function multi(k) {
+      var f = s[k];
+      var selected = state.sit[k] || [];
+      var boxes = f.options.map(function (o, i) {
+        var checked = selected.indexOf(o) !== -1;
+        return '<label class="multi-opt' + (checked ? " is-checked" : "") + '">' +
+          '<input type="checkbox" data-multi="' + k + '" value="' + esc(o) + '"' + (checked ? " checked" : "") + '/>' +
+          '<span class="multi-box" aria-hidden="true"></span>' +
+          '<span class="multi-lbl">' + esc(o) + '</span>' +
+          '</label>';
+      }).join("");
+      return '<div class="multi-field">' +
+        '<label class="multi-q">' + f.label + '<span class="multi-hint">' + f.placeholder + '</span></label>' +
+        '<div class="multi-grid">' + boxes + '</div>' +
+        '</div>';
+    }
     return '' +
       '<p class="q">Tell us about the debt.</p>' +
       '<p class="qsub">A few details help an attorney assess your case before the call.</p>' +
-      '<div class="field row2">' + sel("count") + sel("type") + '</div>' +
+      '<div class="field row1">' + sel("count") + '</div>' +
+      '<div class="field">' + multi("type") + '</div>' +
       '<div class="field row2">' + sel("stage") + sel("security") + '</div>' +
       '<div class="field"><label>' + s.more.label + '</label>' +
         '<textarea data-sit="more" placeholder="' + esc(s.more.placeholder) + '">' + esc(state.sit.more) + '</textarea></div>';
@@ -205,14 +226,12 @@
     return '' +
       '<p class="q">Where should an attorney reach you?</p>' +
       '<p class="qsub">An attorney reviews every case. We never sell your information.</p>' +
-      // Action 4 (post-review 2026-06-02): altPhone removed; address/city/zip/dob marked (optional).
+      // 2026-06-04 (Sona's progressive-profiling final): name + phone + email + state + ZIP only.
+      // Address, city, DOB captured later during the call or client onboarding.
       '<div class="field row2"><div><label>' + L.first + ' *</label>' + inp("first") + '</div><div><label>' + L.last + ' *</label>' + inp("last") + '</div></div>' +
       '<div class="field row2"><div><label>' + L.phone + ' *</label>' + inp("phone", 'inputmode="tel"') + '</div><div><label>' + L.email + ' *</label>' + inp("email", 'inputmode="email"') + '</div></div>' +
       '<div class="field row2"><div><label>' + L.state + ' *</label>' +
-        '<select data-field="state">' + stateOpts + '</select></div><div><label>' + L.address + ' <span class="opt">(optional)</span></label>' + inp("address") + '</div></div>' +
-      '<div class="field row2"><div><label>' + L.city + ' <span class="opt">(optional)</span></label>' + inp("city") + '</div><div><label>' + L.zip + ' <span class="opt">(optional)</span></label>' + inp("zip", 'inputmode="numeric"') + '</div></div>' +
-      '<div class="field row1"><div><label>' + L.dob + ' <span class="opt">(optional)</span></label>' +
-        '<input value="' + esc(state.fields.dob) + '" placeholder="MM/DD/YYYY" data-field="dob" inputmode="numeric" maxlength="10"/></div></div>' +
+        '<select data-field="state">' + stateOpts + '</select></div><div><label>' + L.zip + ' *</label>' + inp("zip", 'inputmode="numeric" maxlength="5"') + '</div></div>' +
       '<div class="form-exclusion">' + C.form.stateExclusion + '</div>';
   }
 
@@ -274,7 +293,9 @@
 
   function canSubmit() {
     var f = state.fields;
-    return !!(f.first.trim() && f.last.trim() && f.phone.trim() && f.email.trim() && f.state);
+    // 2026-06-04: ZIP added per Sona's progressive-profiling note. Five required fields.
+    var zipOk = /^\d{5}$/.test((f.zip || "").trim());
+    return !!(f.first.trim() && f.last.trim() && f.phone.trim() && f.email.trim() && f.state && zipOk);
   }
 
   /* ---- review badges (BBB / Trustpilot / Google) + headline metrics ----- */
@@ -555,6 +576,23 @@
         syncInlineSlider();
       });
     }
+    // 2026-06-04: multi-select handler for sit.type (array-valued).
+    root.querySelectorAll("[data-multi]").forEach(function (node) {
+      var k = node.getAttribute("data-multi");
+      if (!Array.isArray(state.sit[k])) state.sit[k] = [];
+      node.addEventListener("change", function () {
+        var arr = state.sit[k];
+        if (node.checked) {
+          if (arr.indexOf(node.value) === -1) arr.push(node.value);
+        } else {
+          var i = arr.indexOf(node.value);
+          if (i !== -1) arr.splice(i, 1);
+        }
+        // Toggle the parent's is-checked class so the chip styling tracks state.
+        var parent = node.closest(".multi-opt");
+        if (parent) parent.classList.toggle("is-checked", node.checked);
+      });
+    });
     root.querySelectorAll("[data-sit]").forEach(function (node) {
       var k = node.getAttribute("data-sit");
       node.addEventListener("input", function () { state.sit[k] = node.value; });

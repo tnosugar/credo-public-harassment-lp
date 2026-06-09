@@ -549,3 +549,67 @@ html[data-borders="off"] .body-fig {
   overflow: hidden;
 }
 html[data-borders="off"] .hero-figure { background: var(--bg-sand); }
+
+/* ============ 2026-06-04: multi-select checkbox group for "type" field ============
+   Used by StepSituation() in app.js when a situationFields entry has multi:true.
+   Renders as a 2-column responsive chip grid (1 col on narrow screens). */
+.multi-field { display: flex; flex-direction: column; gap: 12px; }
+.multi-q {
+  display: flex; flex-direction: column; gap: 2px;
+  font-size: var(--fs-body-sm); font-weight: var(--fw-semi); color: var(--fg);
+  letter-spacing: var(--tracking-snug); line-height: 1.35;
+}
+.multi-q .multi-hint {
+  font-weight: var(--fw-regular); color: var(--fg-muted);
+  font-size: var(--fs-meta); letter-spacing: 0;
+}
+.multi-grid {
+  display: grid; grid-template-columns: 1fr; gap: 10px;
+}
+@media (min-width: 560px) { .multi-grid { grid-template-columns: 1fr 1fr; } }
+
+.multi-opt {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-size: var(--fs-body); color: var(--fg);
+  transition: border-color var(--t-fast), background var(--t-fast);
+  user-select: none;
+}
+.multi-opt:hover { border-color: var(--fg); }
+.multi-opt input[type="checkbox"] {
+  position: absolute; opacity: 0; pointer-events: none;
+}
+.multi-opt .multi-box {
+  flex: none; width: 20px; height: 20px;
+  border: 1.5px solid var(--fg);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--t-fast), border-color var(--t-fast);
+  background: #fff;
+}
+.multi-opt .multi-box::after {
+  content: ""; width: 10px; height: 6px;
+  border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px) scale(0);
+  transition: transform var(--t-fast);
+}
+.multi-opt.is-checked {
+  border-color: var(--credo-red);
+  background: rgba(201, 32, 40, 0.04);
+}
+.multi-opt.is-checked .multi-box {
+  background: var(--credo-red); border-color: var(--credo-red);
+}
+.multi-opt.is-checked .multi-box::after { transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+.multi-opt .multi-lbl { line-height: 1.35; }
+
+/* Keyboard focus ring for accessibility */
+.multi-opt input[type="checkbox"]:focus-visible + .multi-box {
+  outline: 2px solid var(--credo-red); outline-offset: 3px;
+}
+
+/* No-borders variant: align with the rest of the page softening */
+html[data-borders="off"] .multi-opt { border: none; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.05); border-radius: 4px; }
+html[data-borders="off"] .multi-opt .multi-box { border-color: var(--fg-muted); }
