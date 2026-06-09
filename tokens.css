@@ -57,18 +57,32 @@
                       'Segoe UI', Roboto, sans-serif;
   --font-mono:        ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* ---- Type scale ------------------------------------------------------ */
-  --fs-display:       clamp(32px, 5vw, 52px);
-  --fs-section:       clamp(26px, 3.4vw, 38px);
-  --fs-h3:            22px;
-  --fs-h4:            18px;
-  --fs-lede:          19px;
-  --fs-lede-sm:       18px;
-  --fs-body:          17px;
-  --fs-body-sm:       15px;
-  --fs-body-xs:       14px;
-  --fs-meta:          13px;
-  --fs-micro:         12px;
+  /* ---- Type scale ------------------------------------------------------
+     Action 7 (post-review 2026-06-02): per-page visible sizes constrained
+     to 4 + caption. 11 distinct token sizes collapsed onto 5 visible buckets:
+
+         hero    = --fs-display    (clamp 32–52px)        hero only
+         section = --fs-section    (clamp 26–38px)        all section / h3 headings
+         body    = --fs-body       (17px)                 default body + lede + h4
+         small   = --fs-meta       (13px)                 small body + meta + disclaimers
+         caption = --fs-micro      (12px, mono)           form-step labels + TOC tags
+
+     Token NAMES preserved for backwards compat so per-component CSS keeps
+     working — but they now point at fewer underlying values. Three tokens
+     stay independent because they're the canonical hero / section / body /
+     small / caption anchors. The rest are aliased.
+     ====================================================================== */
+  --fs-display:       clamp(32px, 5vw, 52px);         /* hero */
+  --fs-section:       clamp(26px, 3.4vw, 38px);       /* section heads */
+  --fs-h3:            var(--fs-section);              /* was 22px — collapsed to section */
+  --fs-h4:            var(--fs-body);                 /* was 18px — collapsed to body */
+  --fs-lede:          var(--fs-body);                 /* was 19px — collapsed to body */
+  --fs-lede-sm:       var(--fs-body);                 /* was 18px — collapsed to body */
+  --fs-body:          17px;                           /* body default */
+  --fs-body-sm:       var(--fs-meta);                 /* was 15px — collapsed to small */
+  --fs-body-xs:       var(--fs-meta);                 /* was 14px — collapsed to small */
+  --fs-meta:          13px;                           /* small (disclaimers, captions, footnotes) */
+  --fs-micro:         12px;                           /* caption (form steps, mono labels) */
 
   /* ---- Weights --------------------------------------------------------- */
   --fw-light:         300;
