@@ -66,12 +66,15 @@
   }
 
   /* ---- shared form state (inline step-1 + overlay stay in sync) ---------- */
+  // Action 4 (post-review 2026-06-02): Step 3 trimmed. Required = first + last + phone + email + state.
+  // Dropped: altPhone. Optional (marked '(optional)'): address, city, zip, dob.
+  // Slider start: 8000 per user direction (was 15000).
   var state = {
     open: false,
     step: 0,
-    amount: 15000,
+    amount: 8000,
     sit: { count: "", type: "", stage: "", security: "", more: "" },
-    fields: { first: "", last: "", phone: "", email: "", altPhone: "", address: "", city: "", state: "", zip: "", dob: "" }
+    fields: { first: "", last: "", phone: "", email: "", address: "", city: "", state: "", zip: "", dob: "" }
   };
 
   /* ======================================================================
@@ -201,13 +204,14 @@
     }).join("");
     return '' +
       '<p class="q">Where should an attorney reach you?</p>' +
-      '<p class="qsub">A real person reviews your case. We never sell your information.</p>' +
+      '<p class="qsub">An attorney reviews every case. We never sell your information.</p>' +
+      // Action 4 (post-review 2026-06-02): altPhone removed; address/city/zip/dob marked (optional).
       '<div class="field row2"><div><label>' + L.first + ' *</label>' + inp("first") + '</div><div><label>' + L.last + ' *</label>' + inp("last") + '</div></div>' +
       '<div class="field row2"><div><label>' + L.phone + ' *</label>' + inp("phone", 'inputmode="tel"') + '</div><div><label>' + L.email + ' *</label>' + inp("email", 'inputmode="email"') + '</div></div>' +
-      '<div class="field row2"><div><label>' + L.altPhone + '</label>' + inp("altPhone", 'inputmode="tel"') + '</div><div><label>' + L.address + '</label>' + inp("address") + '</div></div>' +
-      '<div class="field row2"><div><label>' + L.city + '</label>' + inp("city") + '</div><div><label>' + L.state + ' *</label>' +
-        '<select data-field="state">' + stateOpts + '</select></div></div>' +
-      '<div class="field row2"><div><label>' + L.zip + '</label>' + inp("zip", 'inputmode="numeric"') + '</div><div><label>' + L.dob + '</label>' +
+      '<div class="field row2"><div><label>' + L.state + ' *</label>' +
+        '<select data-field="state">' + stateOpts + '</select></div><div><label>' + L.address + ' <span class="opt">(optional)</span></label>' + inp("address") + '</div></div>' +
+      '<div class="field row2"><div><label>' + L.city + ' <span class="opt">(optional)</span></label>' + inp("city") + '</div><div><label>' + L.zip + ' <span class="opt">(optional)</span></label>' + inp("zip", 'inputmode="numeric"') + '</div></div>' +
+      '<div class="field row1"><div><label>' + L.dob + ' <span class="opt">(optional)</span></label>' +
         '<input value="' + esc(state.fields.dob) + '" placeholder="MM/DD/YYYY" data-field="dob" inputmode="numeric" maxlength="10"/></div></div>' +
       '<div class="form-exclusion">' + C.form.stateExclusion + '</div>';
   }
@@ -226,7 +230,8 @@
           '<div class="form-nav">' +
             '<button class="btn-stamp full" data-form-continue>Continue ' + Ico.arrow + '</button>' +
           '</div>' +
-          '<p class="form-fine">' + C.disclaimer + '</p>' +
+          // Action 13 (post-review 2026-06-02): disclaimer removed from in-form footer.
+          // Compliance kept via the global page disclaimer at line ~402.
         '</div>' +
       '</div>';
   }
@@ -258,7 +263,8 @@
               '<div class="form-body">' + body + '</div>' +
               '<div class="form-foot">' +
                 '<div class="form-nav">' + nav + '</div>' +
-                '<p class="form-fine">' + C.disclaimer + '</p>' +
+                // Action 13 (post-review 2026-06-02): disclaimer removed from in-form footer.
+          // Compliance kept via the global page disclaimer at line ~402.
               '</div>' +
             '</div>' +
           '</div>' +

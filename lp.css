@@ -517,3 +517,31 @@ a.hero-call:hover { color: var(--credo-red); }
 .nav-cta, .nav-phone, .nav-links a { transition: color var(--t-fast), background var(--t-fast); }
 .hero-figure { transition: box-shadow var(--t-base); }
 .hero-figure:hover { box-shadow: var(--shadow-md); }
+
+/* ============ Action 13 (post-review 2026-06-02) =============================
+   Field "(optional)" label hint — paired with required '*' markers.
+   ============================================================================ */
+.field label .opt {
+  font-weight: 400;
+  color: var(--fg-muted);
+  font-size: 0.85em;
+  margin-left: 4px;
+}
+
+/* ============ Action 15 (post-review 2026-06-02) =============================
+   borders=off variant per Vernon's note ("Try remove the black borders on the
+   images and maybe the form too"). Triggered by <html data-borders="off"> on
+   the *-noborders.html page variants.
+   Drops the bold 2px frames from .hero-figure / .form / .imgrow-fig / .body-fig
+   and softens them with a quiet drop-shadow instead.
+   ============================================================================ */
+html[data-borders="off"] .hero-figure,
+html[data-borders="off"] .form,
+html[data-borders="off"] .imgrow-fig,
+html[data-borders="off"] .body-fig {
+  border: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+html[data-borders="off"] .hero-figure { background: var(--bg-sand); }

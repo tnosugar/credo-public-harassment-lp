@@ -10,8 +10,9 @@ window.CREDO = {
 
   hero: {
     eyebrow: "FDCPA · Know your rights",
-    // "act" is emphasized in red via <em>
-    h1: ["Our attorneys explain your rights, then ", "act", " on them."],
+    // "Legally" is emphasized in red via <em>. H1 rewritten 2026-06-02 per
+    // CC analysis + Vernon's note: outcome-led instead of educational.
+    h1: ["Make the collection calls stop. ", "Legally", "."],
     lede: "The Fair Debt Collection Practices Act limits what a collector can do. We review the calls and letters you've received, flag every likely violation, and send the notice that makes them stop.",
     filler: "Fill in the form or call for a free review of your case.",
   },
@@ -46,7 +47,8 @@ window.CREDO = {
       "Refusing to verify the debt",
     ],
     submit: "Get a free case evaluation",
-    stateExclusion: "We currently do not service DC, DE, ID, OK, WV, or WY.",
+    // Action 1 (post-review 2026-06-02): NC added per Sona's comment.
+    stateExclusion: "We currently do not service DC, DE, ID, NC, OK, WV, or WY.",
   },
 
   trust: [
