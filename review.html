@@ -273,13 +273,21 @@ function matches(lp, f) {
 }
 
 let current = -1;
+/* Hub-to-LP review-mode propagation: if the hub itself is in review mode
+ * (?review=1 in the hub URL), pass it through to the iframe + "Open ↗" link
+ * so the LP loads the widget too. Reviewers can comment on any LP they
+ * navigate to via the hub without having to manually edit the URL. */
+const HUB_IN_REVIEW = new URLSearchParams(location.search).get('review') === '1';
+function withReviewFlag(href) {
+  return HUB_IN_REVIEW ? href + (href.indexOf('?') < 0 ? '?' : '&') + 'review=1' : href;
+}
 function select(idx) {
   if (idx < 0 || idx >= LPS.length) return;
   current = idx;
   const lp = LPS[idx];
   $empty.style.display = 'none';
   $frame.style.display = 'block';
-  $frame.src = lp.file;
+  $frame.src = withReviewFlag(lp.file);
   document.getElementById('m-cluster').textContent = lp.c;
   document.getElementById('m-slug').textContent = lp.slug;
   document.getElementById('m-phone').textContent = lp.phone;
@@ -288,7 +296,7 @@ function select(idx) {
   angleEl.style.display = lp.angle ? 'inline-flex' : 'none';
   document.getElementById('m-champ').style.display = lp.champion ? 'inline-flex' : 'none';
   const open = document.getElementById('t-open');
-  open.href = lp.file; open.style.display = 'inline-flex';
+  open.href = withReviewFlag(lp.file); open.style.display = 'inline-flex';
   const live = document.getElementById('t-live');
   live.href = 'https://start.credolegal.com' + lp.slug; live.style.display = 'inline-flex';
   // sidebar highlight
@@ -319,5 +327,8 @@ if (!Number.isNaN(hashIdx) && hashIdx >= 0 && hashIdx < LPS.length) {
   select(hashIdx);
 }
 </script>
+<!-- review widget: inert by default; ?review=1 activates -->
+<script src="review.config.js"></script>
+<script src="review-bootstrap.js" defer></script>
 </body>
 </html>
