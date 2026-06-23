@@ -326,9 +326,13 @@ const hashIdx = parseInt(location.hash.slice(1), 10);
 if (!Number.isNaN(hashIdx) && hashIdx >= 0 && hashIdx < LPS.length) {
   select(hashIdx);
 }
+/* NB: the review widget is intentionally NOT loaded on this hub page. The hub
+ * is a navigator only; reviewers comment on the LP content inside each iframe
+ * (every LP variant loads its own widget). When this hub URL carries ?review=1,
+ * `withReviewFlag()` above propagates the flag into the iframe src so the LP
+ * loads with its widget active. The user enters review mode once at the hub
+ * URL and every LP they click into is reviewable — but the widget banner +
+ * sidebar render INSIDE the iframe, not on the hub chrome. */
 </script>
-<!-- review widget: inert by default; ?review=1 activates -->
-<script src="review.config.js"></script>
-<script src="review-bootstrap.js" defer></script>
 </body>
 </html>
