@@ -16,8 +16,29 @@ const FB_OK = FB.apiKey && FB.apiKey.indexOf('PASTE') !== 0 && FB.databaseURL &&
 const _MEM = {};
 const store = {get(k){try{return localStorage.getItem(k)}catch(e){return (k in _MEM)?_MEM[k]:null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){_MEM[k]=v}}};
 
-const ANCHOR_TAGS = ['h1','h2','h3','h4','h5','h6','p','li','blockquote'];
+/* 2026-06-23: switched from canonical 'allowlist' mode to 'direct-text' mode
+ * per library/features/review-widget/commentable-everything.md. Every element
+ * with direct text content (≥2 chars) becomes commentable, except those in
+ * the curated NEVER_ANCHOR deny-list (form controls, SVG internals, void
+ * elements, layout-only table cells). Site chrome (nav/header[role=banner]/
+ * footer) is still skipped because chromeAnchored is left at false; flip
+ * that and add CHROME_COUNTERS routing if you want footer / nav comments. */
+const NEVER_ANCHOR = new Set([
+  'input','select','textarea','option','optgroup','datalist','fieldset','legend',
+  'script','style','template','noscript','meta','link','title','head','html','body',
+  'svg','path','circle','rect','ellipse','polygon','polyline','line','g','use','defs','symbol','marker',
+  'iframe','embed','object','param',
+  'br','hr','img','video','audio','source','track','picture',
+  'col','colgroup'
+]);
 const CHROME_SEL = '.review-banner,.review-sidebar,.review-modal-overlay,.review-floating-pill,[data-review-skip]';
+function hasDirectText(el){
+  for (const child of el.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE && child.textContent.trim().length >= 2) return true;
+  }
+  return false;
+}
+function isInSiteChrome(el){ return !!el.closest('nav, header[role="banner"], footer'); }
 
 function pageSlug(){let p=window.location.pathname.replace(/\/index\.html?$/,'');if(p===''||p==='/')return 'home';return p.replace(/^\/|\/$/g,'').replace(/\//g,'-')||'home';}
 const SLUG = pageSlug();
@@ -87,15 +108,23 @@ function placePill(elm){curEl=elm;curId=elm.getAttribute('data-comment-id');PILL
 function hidePillSoon(){hideT=setTimeout(()=>{PILL.style.display='none';curEl=null;curId=null;},140);}
 
 function anchorPass(){
-  const seen=new Set(),counters={};
-  const opt=Array.from(document.querySelectorAll('[data-comment-target]'));
-  const tagged=Array.from(document.querySelectorAll(ANCHOR_TAGS.join(',')));
-  [...opt,...tagged].forEach(elm=>{
-    if(seen.has(elm))return;seen.add(elm);
-    if(elm.closest(CHROME_SEL))return;
+  const counters={};
+  /* commentable-everything 'direct-text' mode: iterate ALL elements; anchor
+   * any element whose own text-node children include ≥2 trimmed chars, except
+   * those in NEVER_ANCHOR. Wrapper elements like <div> auto-exclude because
+   * their text lives in descendants, not direct text nodes. Leaves like <a>,
+   * <button>, <label>, <strong>, <em>, <h*>, <p>, <li>, <td>, <th> all
+   * auto-include. Site chrome (nav/header[role=banner]/footer) stays skipped
+   * — flip the isInSiteChrome guard if you want chromeAnchored=true. */
+  document.querySelectorAll('*').forEach(elm=>{
+    if(elm.closest(CHROME_SEL))return;             // widget chrome
     if(elm.hasAttribute('data-comment-id'))return;
-    if((elm.textContent||'').trim().length<2 && !elm.querySelector('img,video'))return;
-    const tag=elm.tagName.toLowerCase();counters[tag]=(counters[tag]||0)+1;
+    if(elm.hasAttribute('data-review-skip'))return;
+    const tag=elm.tagName.toLowerCase();
+    if(NEVER_ANCHOR.has(tag))return;
+    if(!hasDirectText(elm))return;
+    if(isInSiteChrome(elm))return;                 // chromeAnchored opt-in not enabled
+    counters[tag]=(counters[tag]||0)+1;
     elm.setAttribute('data-comment-id',SLUG+'-'+tag+'-'+counters[tag]);
   });
 }
