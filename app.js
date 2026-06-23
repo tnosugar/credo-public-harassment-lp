@@ -39,6 +39,26 @@
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+  // 2026-06-23: renderH1 reads C.hero.h1 (a 3-part array: prefix / emphasis / suffix)
+  // and produces "prefix<em>middle</em>suffix". Fixes a long-standing bug where the
+  // H1 in VariantA + VariantC was hardcoded to the rights-education champion copy
+  // and never read C.hero.h1 — every variant therefore rendered the same H1
+  // regardless of the per-LP content file. See content-*.js for the per-LP h1.
+  function renderH1(parts) {
+    if (!Array.isArray(parts) || parts.length < 3) {
+      // Defensive fallback for legacy content files without an h1 array.
+      return esc(String(parts || "Our Attorneys Can Help."));
+    }
+    return esc(parts[0]) + "<em>" + esc(parts[1]) + "</em>" + esc(parts[2]);
+  }
+  // 2026-06-23: heroEyebrow reads C.hero.eyebrow when present, falling back
+  // to the prototype's original hard-coded "§ 00 · HARASSMENT · FDCPA" so
+  // the rights-education champion variants don't regress. data-labels="plain"
+  // hides this whole div anyway on the new noborders variants.
+  function heroEyebrow() {
+    var eb = (C.hero && C.hero.eyebrow) ? C.hero.eyebrow : "§ 00 · " + (C.cluster || "HARASSMENT").toUpperCase() + " · " + (C.statute || "FDCPA");
+    return '<div class="hero-no"><span>' + esc(eb) + '</span></div>';
+  }
   function pad2(i) { return String(i).padStart(2, "0"); }
   function heroStyle() {
     return window.CREDO_HERO_STYLE || document.documentElement.getAttribute("data-hero-style") || "portrait";
@@ -457,8 +477,8 @@
         '<section class="hero" id="top"><div class="container">' +
           '<div class="hero-grid">' +
             '<div>' +
-              '<div class="hero-no"><span>§ 00 · HARASSMENT · FDCPA</span></div>' +
-              '<h1 class="h1">Our attorneys explain your rights, then <em>act</em> on them.</h1>' +
+              heroEyebrow() +
+              '<h1 class="h1">' + renderH1(C.hero.h1) + '</h1>' +
               '<p class="lede">' + C.hero.lede + '</p>' +
               '<p class="form-fine" style="margin:0 0 22px">' + C.hero.filler + '</p>' +
               LeadForm() +
@@ -515,8 +535,8 @@
         '<section class="hero" id="top"><div class="container">' +
           '<div class="hero-grid">' +
             '<div>' +
-              '<div class="hero-no"><span>§ 00 · HARASSMENT · FDCPA</span></div>' +
-              '<h1 class="h1">Our attorneys explain your rights, then <em>act</em> on them.</h1>' +
+              heroEyebrow() +
+              '<h1 class="h1">' + renderH1(C.hero.h1) + '</h1>' +
               '<p class="lede">' + C.hero.lede + '</p>' +
               '<div class="hero-cta" style="margin-top:52px">' +
                 '<button class="btn-stamp" data-scrollform>' + C.form.submit + ' ' + Ico.arrow + '</button>' +
