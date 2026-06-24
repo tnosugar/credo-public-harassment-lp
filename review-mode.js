@@ -42,6 +42,67 @@ function isInSiteChrome(el){ return !!el.closest('nav, header[role="banner"], fo
 
 function pageSlug(){let p=window.location.pathname.replace(/\/index\.html?$/,'');if(p===''||p==='/')return 'home';return p.replace(/^\/|\/$/g,'').replace(/\//g,'-')||'home';}
 const SLUG = pageSlug();
+
+/* Anchor counters persist across re-anchor passes (added 2026-06-24 with the
+ * MutationObserver). Resetting per-call caused new step-2 form labels to
+ * collide with already-issued step-1 label-N IDs once content swaps in. */
+const ANCHOR_COUNTERS = {};
+
+/* ───── Variant-scoped commenting (added 2026-06-24) ─────────────────────────
+ * Goal: a comment on the hero IMAGE in the M·M mix should not appear when the
+ * reviewer flips to W·W — but a comment on the hero HEADLINE applies to every
+ * mix. Generalised so any future page-internal variation (mix, layout A/B,
+ * copy A/B/C, etc.) can opt in.
+ *
+ * Contract:
+ *   1. The page declares its dimensions in `window.CREDO_VARIANT_DIMENSIONS`,
+ *      a map of `dimensionKey → () => currentValue` (e.g. {hero:()=>'m', who:()=>'w'}).
+ *   2. Any element that varies along one or more dimensions carries
+ *      `data-variant-scope="<dim1> <dim2> …"` (space-separated keys).
+ *   3. When commenting on such an element, the widget tags the comment record's
+ *      `page` field with `<pageSlug>#<dim>=<value>,…` for the dimensions it
+ *      varies along. Untagged comments stay at bare `<pageSlug>`.
+ *   4. When filtering comments on render, the widget shows a tagged comment
+ *      only when every dimension/value in its page key matches the page's
+ *      current dimension state.
+ *
+ * Untagged elements + untagged comments behave exactly as before. */
+function _dims(){ return window.CREDO_VARIANT_DIMENSIONS || {}; }
+function getVariantScope(elm){
+  if(!elm||!elm.closest)return [];
+  const carrier = elm.closest('[data-variant-scope]');
+  if(!carrier) return [];
+  return (carrier.getAttribute('data-variant-scope')||'').split(/\s+/).filter(Boolean);
+}
+function currentVariantSuffix(dimKeys){
+  if(!dimKeys||!dimKeys.length) return '';
+  const cfg = _dims();
+  const parts = dimKeys.map(k=>{
+    const fn = cfg[k];
+    const v = (typeof fn === 'function') ? fn() : null;
+    return (v==null) ? null : (k+'='+String(v));
+  }).filter(Boolean);
+  return parts.length ? ('#'+parts.join(',')) : '';
+}
+function effectivePage(elm){ return SLUG + currentVariantSuffix(getVariantScope(elm)); }
+function pageMatches(commentPage){
+  if(commentPage === SLUG) return true;
+  if(typeof commentPage !== 'string') return false;
+  if(!commentPage.startsWith(SLUG+'#')) return false;
+  const dimsStr = commentPage.slice(SLUG.length+1);
+  if(!dimsStr) return true;
+  const cfg = _dims();
+  for(const part of dimsStr.split(',')){
+    const eq = part.indexOf('=');
+    if(eq < 0) continue;
+    const k = part.slice(0, eq);
+    const v = part.slice(eq+1);
+    const fn = cfg[k];
+    if(typeof fn !== 'function') return false;     // unknown dimension → hide
+    if(String(fn()) !== v) return false;            // mismatched value → hide
+  }
+  return true;
+}
 function reviewer(){let n=store.get('credo_reviewer');if(!n){n=(window.prompt(L.namePrompt,'')||'Anonymous').trim()||'Anonymous';store.set('credo_reviewer',n);}return n;}
 
 /* status normalize (reader shim for legacy boolean records) */
@@ -108,14 +169,10 @@ function placePill(elm){curEl=elm;curId=elm.getAttribute('data-comment-id');PILL
 function hidePillSoon(){hideT=setTimeout(()=>{PILL.style.display='none';curEl=null;curId=null;},140);}
 
 function anchorPass(){
-  const counters={};
   /* commentable-everything 'direct-text' mode: iterate ALL elements; anchor
    * any element whose own text-node children include ≥2 trimmed chars, except
-   * those in NEVER_ANCHOR. Wrapper elements like <div> auto-exclude because
-   * their text lives in descendants, not direct text nodes. Leaves like <a>,
-   * <button>, <label>, <strong>, <em>, <h*>, <p>, <li>, <td>, <th> all
-   * auto-include. Site chrome (nav/header[role=banner]/footer) stays skipped
-   * — flip the isInSiteChrome guard if you want chromeAnchored=true. */
+   * those in NEVER_ANCHOR. Counters live module-scope (ANCHOR_COUNTERS) so
+   * re-runs after DOM mutations don't reissue duplicate IDs for new content. */
   document.querySelectorAll('*').forEach(elm=>{
     if(elm.closest(CHROME_SEL))return;             // widget chrome
     if(elm.hasAttribute('data-comment-id'))return;
@@ -124,8 +181,34 @@ function anchorPass(){
     if(NEVER_ANCHOR.has(tag))return;
     if(!hasDirectText(elm))return;
     if(isInSiteChrome(elm))return;                 // chromeAnchored opt-in not enabled
-    counters[tag]=(counters[tag]||0)+1;
-    elm.setAttribute('data-comment-id',SLUG+'-'+tag+'-'+counters[tag]);
+    ANCHOR_COUNTERS[tag]=(ANCHOR_COUNTERS[tag]||0)+1;
+    elm.setAttribute('data-comment-id',SLUG+'-'+tag+'-'+ANCHOR_COUNTERS[tag]);
+  });
+}
+
+/* Image anchor pass (added 2026-06-24). Images themselves are in NEVER_ANCHOR
+ * and their wrapping <picture> is too, so the text pass skips both. Walk
+ * <img> elements and anchor the nearest meaningful container instead — the
+ * .hero-figure / .body-fig / <figure> / <picture> / fallback parent. The pill
+ * already resolves the deepest anchor via closest('[data-comment-id]'), so
+ * hovering an image lands on its container's anchor. */
+function anchorImagePass(){
+  document.querySelectorAll('img').forEach(img=>{
+    if(img.closest(CHROME_SEL))return;
+    if(isInSiteChrome(img))return;
+    if(img.closest('[data-review-skip]'))return;
+    const target = img.closest('.hero-figure')
+                 || img.closest('.body-fig')
+                 || img.closest('figure')
+                 || img.closest('picture')
+                 || img.parentElement;
+    if(!target) return;
+    if(target.hasAttribute('data-comment-id')) return;
+    let prefix = 'img';
+    if(target.classList && target.classList.contains('hero-figure')) prefix = 'hero-image';
+    else if(target.classList && target.classList.contains('body-fig')) prefix = 'body-image';
+    ANCHOR_COUNTERS[prefix] = (ANCHOR_COUNTERS[prefix]||0) + 1;
+    target.setAttribute('data-comment-id', SLUG+'-'+prefix+'-'+ANCHOR_COUNTERS[prefix]);
   });
 }
 
@@ -144,12 +227,19 @@ function modal(title,ctx,initText,initRepl,onSave){
 function openComposer(anchor,elm){
   const note=elm.getAttribute('data-variant-note');
   const prev=note||(elm.textContent||'').replace(/\s+/g,' ').trim().slice(0,80)||(elm.querySelector('img,video')?'[creative]':'');
-  modal('Add comment',anchor,'','',(text,repl)=>ADAPTER.create({comment:text,replacement:repl||null,anchor:anchor,page:SLUG,author:ME,status:'pending',timestamp:Date.now(),text_preview:prev,url:location.href,user_agent:navigator.userAgent}));
+  /* effectivePage tags the comment with the active variant state for any
+   * dimension the anchored element varies along (data-variant-scope). For an
+   * untagged element, effectivePage === SLUG and behaviour is unchanged. */
+  const pageKey = effectivePage(elm);
+  modal('Add comment',anchor,'','',(text,repl)=>ADAPTER.create({comment:text,replacement:repl||null,anchor:anchor,page:pageKey,author:ME,status:'pending',timestamp:Date.now(),text_preview:prev,url:location.href,user_agent:navigator.userAgent}));
 }
 
 function actBtn(label,cls,fn){const b=el('button',cls,esc(label));b.onclick=ev=>{ev.stopPropagation();fn()};return b;}
 function render(){
-  const all=Object.entries(COMMENTS).filter(([id,c])=>c&&c.page===SLUG);
+  /* Variant-aware filter: untagged comments (page === SLUG) always show;
+   * tagged comments show only when every dim/value in their page key matches
+   * the page's current dimension state via pageMatches(). */
+  const all=Object.entries(COMMENTS).filter(([id,c])=>c && pageMatches(c.page));
   const counts={pending:0,resolved:0};
   all.forEach(([id,c])=>{counts[statusOf(c)]=(counts[statusOf(c)]||0)+1});
   TABS.querySelectorAll('button').forEach(b=>{b.querySelector('.rw-c').textContent=counts[TAB_OF[b.dataset.k]]||0;});
@@ -209,7 +299,36 @@ function spotlight(anchor){
 (async function init(){
   ME=reviewer();
   try{ADAPTER=FB_OK?await firebaseAdapter():localAdapter();}catch(e){console.warn('[review] firebase init failed, using local',e);ADAPTER=localAdapter();}
-  buildChrome();anchorPass();
+  buildChrome();
+  anchorPass();
+  anchorImagePass();
+  /* MutationObserver (added 2026-06-24): re-anchor + re-render whenever the
+   * page's non-chrome DOM mutates. Drives 'comment on every step of the form':
+   * each step's labels/buttons get anchors as soon as the step DOM renders.
+   * Also catches any lazy-rendered content the page adds after initial paint.
+   *
+   * Watching childList+subtree only — attribute changes from render() (adding
+   * .has-comment etc.) are not observed, so we don't loop. Mutations whose
+   * targets are entirely inside widget chrome (sidebar list rebuilds, pill
+   * positioning) are filtered out below as a second safety net. */
+  let _moDebounce;
+  const mo = new MutationObserver(muts=>{
+    let real = false;
+    for(const m of muts){
+      const t = m.target;
+      if(!t || t.nodeType !== 1) continue;
+      if(t.closest && t.closest(CHROME_SEL)) continue;
+      real = true; break;
+    }
+    if(!real) return;
+    clearTimeout(_moDebounce);
+    _moDebounce = setTimeout(()=>{
+      anchorPass();
+      anchorImagePass();
+      render();
+    }, 80);
+  });
+  mo.observe(document.body, { childList:true, subtree:true });
   /* variant-aware anchors (credo variation): the prototype rewrites a zone's
    * data-comment-id when its headline/message/creative selection changes, then
    * calls this hook so the highlight pass re-matches comments to the now-current

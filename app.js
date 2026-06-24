@@ -81,6 +81,15 @@
     if (_qsHas("who", "w")) return "w";
     return window.CREDO_WHO_SUBJECT || document.documentElement.getAttribute("data-who-subject") || "w";
   }
+
+  /* Variant dimensions API (added 2026-06-24). The review widget reads
+   * window.CREDO_VARIANT_DIMENSIONS to scope comments left on variant-tagged
+   * elements (data-variant-scope="hero"|"who"|…) to the variant they were
+   * left in. Adding a new dimension here + tagging the corresponding element
+   * is all it takes to extend scoping to layout/copy/etc. A/B/C variants. */
+  window.CREDO_VARIANT_DIMENSIONS = window.CREDO_VARIANT_DIMENSIONS || {};
+  window.CREDO_VARIANT_DIMENSIONS.hero = heroSubject;
+  window.CREDO_VARIANT_DIMENSIONS.who  = whoSubject;
   function fmtAmt(v) { return v >= 100000 ? "$100,000+" : "$" + Number(v).toLocaleString(); }
 
   /* Auto-format a date of birth as MM/DD/YYYY. Inserts "/" after the MM and DD
@@ -173,7 +182,7 @@
     var slug = tight ? base + "-tight" : base;
     var alt = subj === "m" ? a.altM : a.altW;
     return '' +
-      '<div class="hero-figure" data-style="' + hs + '" data-subject="' + subj + '">' +
+      '<div class="hero-figure" data-style="' + hs + '" data-subject="' + subj + '" data-variant-scope="hero">' +
         '<picture>' +
           '<source srcset="assets/' + slug + '-960.webp" media="(min-width: 768px)" type="image/webp"/>' +
           '<source srcset="assets/' + slug + '-480.webp" type="image/webp"/>' +
@@ -208,8 +217,12 @@
       slug = slug + "-m";
       alt = portrait ? m.altPhM : m.altWcM;
     }
+    /* Only the 'who' body figure swaps with whoSubject; declare variant-scope
+     * accordingly so comments on the 'who' image are scoped to the current
+     * who=w|m. 'what' + 'why' images stay neutral across variants. */
+    var scopeAttr = (kind === 'who') ? ' data-variant-scope="who"' : '';
     return '' +
-      '<div class="body-fig has-img">' +
+      '<div class="body-fig has-img"' + scopeAttr + '>' +
         '<picture>' +
           '<source srcset="assets/' + slug + '-960.webp" media="(min-width: 768px)" type="image/webp"/>' +
           '<source srcset="assets/' + slug + '-480.webp" type="image/webp"/>' +
