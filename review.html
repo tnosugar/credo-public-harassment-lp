@@ -276,10 +276,12 @@ function renderList(filter) {
       a.className = 'lp-link';
       a.dataset.idx = idx;
       a.href = '#' + idx;
+      // Sidebar badges: 'Champion' and the 'N fixes' counter were removed
+      // 2026-06-24 to clean visual noise from the LP navigation list. The
+      // top-bar 'CHAMPION' pill (selection metadata) still appears when the
+      // selected LP is a champion. 'New section' badge retained.
       const badges = [];
-      if (lp.champion) badges.push('<span class="b champion">Champion</span>');
       if (lp.newSection) badges.push('<span class="b new-section">New section</span>');
-      if (lp.fixed && lp.fixed.length) badges.push(`<span class="b fixed">${lp.fixed.length} fix${lp.fixed.length>1?'es':''}</span>`);
       a.innerHTML = `
         <div><span class="num">${String(idx+1).padStart(2,'0')}</span><span class="label">${lp.n}</span></div>
         <div class="slug">${lp.slug}</div>
