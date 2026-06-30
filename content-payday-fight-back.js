@@ -125,7 +125,7 @@ window.CREDO = {
     ["What if my payday lender was online and I'm not sure where they're based?", "Online payday lenders are required to be licensed in the state where the borrower lives, regardless of where they operate from. Lack of licensing where you live can void the loan."],
     ["How do I stop my payday lender from withdrawing from my bank account?", "You can revoke ACH authorization under the EFTA. This must be done properly to be legally effective, written notice to both the lender and your bank within the required timeframes."],
     ["What if the loan has already grown to three or four times what I originally borrowed?", "Many state laws limit rollovers, fees, and interest charges. If those limits were exceeded, portions of the balance may be unenforceable, sometimes most of it."],
-    ["How much does this cost?", "Your consultation is free. FDCPA attorney fees are recoverable from the collector, meaning pursuing your claim may cost you nothing out of pocket on that side."],
+    ["How much does this cost?", "Your consultation is free. FDCPA attorney fees are recoverable from the collector if case is won, meaning pursuing your claim may cost you nothing out of pocket on that side."],
   ],
 
   bottomCta: {

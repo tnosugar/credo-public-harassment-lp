@@ -162,7 +162,7 @@ window.CREDO = {
     ["Can a payday lender threaten to have me arrested?", "No. Failing to repay a payday loan is a civil debt matter, not a criminal one. Any collector threatening arrest is violating the FDCPA, every instance is a documented violation."],
     ["Can I stop automatic withdrawals from my bank account?", "Yes. Under the Electronic Funds Transfer Act, you have the right to revoke the ACH authorization that allowed the lender to debit your account. Notify your bank in writing. The withdrawals must stop within 3 business days."],
     ["Will stopping the calls affect the debt itself?", "Stopping the calls is separate from the underlying debt. A cease letter halts contact; we then evaluate the underlying debt and advise on the best path forward, including whether the loan itself was legally valid in your state."],
-    ["How much does this cost?", "Your consultation is free. We offer flexible payment plans, and in cases where we pursue FDCPA violations, attorney fees are recoverable from the collector, so pursuing the claim may cost you nothing out of pocket on that side."],
+    ["How much does this cost?", "Your consultation is free. We offer flexible payment plans, and in cases where we pursue FDCPA violations, attorney fees are recoverable from the collector if case is won, so pursuing the claim may cost you nothing out of pocket on that side."],
   ],
 
   bottomCta: {

@@ -98,7 +98,7 @@ window.CREDO = {
   howItWorks: [
     ["Free consultation", "We assess your violations and calculate what you may be owed, at no cost.", "DAY 0"],
     ["Violation tracking", "We document every illegal contact from day one.", "DAY 0"],
-    ["Legal representation", "We build and file your FDCPA claim against the collector.", "WEEK 1–2"],
+    ["Legal representation", "We build and file your FDCPA claim against the collector.", "WEEK 3–4"],
     ["Recovery", "We pursue the financial compensation the law entitles you to, statutory damages, actual damages, and attorney fees.", "ONGOING"],
   ],
 

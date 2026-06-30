@@ -87,7 +87,7 @@ window.CREDO = {
     ["We track every violation", "Each illegal call, threat, or contact after a cease request is catalogued and added to your claim."],
     ["Payday lenders violate more, we find more", "The aggressive collection tactics common in the payday loan industry create more violations, and more opportunities for recovery."],
     ["Free consultation", "No cost to find out how many violations you have and what your claim could be worth."],
-    ["Flexible payment plans", "FDCPA attorney fees are recoverable from the collector, so pursuing your claim may cost you nothing out of pocket on that side."],
+    ["Flexible payment plans", "FDCPA attorney fees are recoverable from the collector if case is won, so pursuing your claim may cost you nothing out of pocket on that side."],
   ],
 
   commonProblems: [

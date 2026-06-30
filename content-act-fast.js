@@ -104,7 +104,7 @@ window.CREDO = {
     ["We track every violation", "Each illegal call, threat, or contact after a cease request is documented. Each one adds to your claim."],
     ["Speed is our USP", "FDCPA cases are built on documented violations. The sooner we start tracking, the stronger the case."],
     ["From violation to lawsuit", "We don't just stop the calls. We pursue every legal claim the violations support."],
-    ["Flexible payment plans", "FDCPA attorney fees are recoverable from the collector, your claim may cost you nothing out of pocket on that side."],
+    ["Flexible payment plans", "FDCPA attorney fees are recoverable from the collector if case is won, your claim may cost you nothing out of pocket on that side."],
   ],
 
   commonProblems: [
