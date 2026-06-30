@@ -57,7 +57,7 @@
   // hides this whole div anyway on the new noborders variants.
   function heroEyebrow() {
     var eb = (C.hero && C.hero.eyebrow) ? C.hero.eyebrow : "§ 00 · " + (C.cluster || "HARASSMENT").toUpperCase() + " · " + (C.statute || "FDCPA");
-    return '<div class="hero-no"><span>' + esc(eb) + '</span></div>';
+    return '<div class="hero-no" data-slot="hero.eyebrow"><span>' + esc(eb) + '</span></div>';
   }
   function pad2(i) { return String(i).padStart(2, "0"); }
   function heroStyle() {
@@ -90,6 +90,44 @@
   window.CREDO_VARIANT_DIMENSIONS = window.CREDO_VARIANT_DIMENSIONS || {};
   window.CREDO_VARIANT_DIMENSIONS.hero = heroSubject;
   window.CREDO_VARIANT_DIMENSIONS.who  = whoSubject;
+
+  /* Slot catalog for the cross-LP comment feature (added 2026-06-30).
+   * Lists every dotted-path slot this LP's renderer emits via data-slot=…
+   * attributes. The review widget reads window.CREDO_SLOTS to know which
+   * slots exist on this page (so it can show the right counts in the
+   * composer scope chooser, and so it can suppress "all pages with X"
+   * when a particular LP doesn't render X — e.g. an LP without a 6th FAQ
+   * entry doesn't get faq[5].answer).
+   *
+   * The list is enumerated dynamically from the current C.* arrays so each
+   * LP exposes exactly what it renders. Bullet/list lengths come from the
+   * content file, not hardcoded here. */
+  function buildSlotCatalog() {
+    var slots = [
+      'hero.eyebrow', 'hero.h1', 'hero.lede', 'hero.filler',
+      'reviews.bbb', 'reviews.trustpilot', 'reviews.google',
+      'whatWeDo.headline', 'whatWeDo.intro',
+      'rights.intro',
+      'bottomCta.headline', 'bottomCta.body', 'bottomCta.cta',
+      'disclaimer'
+    ];
+    var i;
+    if (C.metrics) for (i = 0; i < C.metrics.length; i++) slots.push('metrics[' + i + ']');
+    if (C.whatWeDo && C.whatWeDo.bullets) for (i = 0; i < C.whatWeDo.bullets.length; i++) slots.push('whatWeDo.bullets[' + i + ']');
+    if (C.whyChoose) for (i = 0; i < C.whyChoose.length; i++) { slots.push('whyChoose[' + i + '].label'); slots.push('whyChoose[' + i + '].body'); }
+    if (C.commonProblems) for (i = 0; i < C.commonProblems.length; i++) { slots.push('commonProblems[' + i + '].label'); slots.push('commonProblems[' + i + '].body'); slots.push('commonProblems[' + i + '].statute'); }
+    if (C.howItWorks) for (i = 0; i < C.howItWorks.length; i++) { slots.push('howItWorks[' + i + '].label'); slots.push('howItWorks[' + i + '].body'); slots.push('howItWorks[' + i + '].timeMarker'); }
+    if (C.rights && C.rights.items) for (i = 0; i < C.rights.items.length; i++) { slots.push('rights.items[' + i + '].cite'); slots.push('rights.items[' + i + '].label'); slots.push('rights.items[' + i + '].text'); slots.push('rights.items[' + i + '].ex'); }
+    if (C.whoHelps) for (i = 0; i < C.whoHelps.length; i++) slots.push('whoHelps[' + i + ']');
+    if (C.faq) for (i = 0; i < C.faq.length; i++) { slots.push('faq[' + i + '].question'); slots.push('faq[' + i + '].answer'); }
+    return slots;
+  }
+  /* Smart-default scope: slots whose prefix is in this list default to "all
+   * pages with this slot" in the composer (brand-wide stats, disclaimers,
+   * review marks). Everything else defaults to "this page only". Reviewer
+   * can always override either way. */
+  var BROADCAST_DEFAULT_PREFIXES = ['metrics', 'trust', 'disclaimer', 'reviews'];
+
   function fmtAmt(v) { return v >= 100000 ? "$100,000+" : "$" + Number(v).toLocaleString(); }
 
   /* Auto-format a date of birth as MM/DD/YYYY. Inserts "/" after the MM and DD
@@ -413,39 +451,42 @@
     var r = C.reviews;
     var rows = '' +
       '<div class="rev-row">' +
-        '<div class="rev">' + BBBMark() + '<div><div class="rv-title">' + r.bbb.title + '</div><div class="rv-meta">' + r.bbb.meta + '</div></div></div>' +
-        '<div class="rev">' + TrustpilotMark() + '<div><div class="rv-title">' + r.trustpilot.title + ' ' + Stars(4.5) + '</div><div class="rv-meta">' + r.trustpilot.meta + '</div></div></div>' +
-        '<div class="rev">' + GoogleMark() + '<div><div class="rv-title">' + r.google.title + ' ' + Stars(4.7) + '</div><div class="rv-meta">' + r.google.meta + '</div></div></div>' +
+        '<div class="rev" data-slot="reviews.bbb">' + BBBMark() + '<div><div class="rv-title">' + r.bbb.title + '</div><div class="rv-meta">' + r.bbb.meta + '</div></div></div>' +
+        '<div class="rev" data-slot="reviews.trustpilot">' + TrustpilotMark() + '<div><div class="rv-title">' + r.trustpilot.title + ' ' + Stars(4.5) + '</div><div class="rv-meta">' + r.trustpilot.meta + '</div></div></div>' +
+        '<div class="rev" data-slot="reviews.google">' + GoogleMark() + '<div><div class="rv-title">' + r.google.title + ' ' + Stars(4.7) + '</div><div class="rv-meta">' + r.google.meta + '</div></div></div>' +
       '</div>';
     var mrow = "";
     if (metrics) {
-      mrow = '<div class="metric-row">' + C.metrics.map(function (m) {
-        return '<div class="m"><span class="m-n">' + m[0] + '</span><span class="m-l">' + m[1] + '</span></div>';
+      mrow = '<div class="metric-row">' + C.metrics.map(function (m, i) {
+        return '<div class="m" data-slot="metrics[' + i + ']"><span class="m-n">' + m[0] + '</span><span class="m-l">' + m[1] + '</span></div>';
       }).join("") + '</div>';
     }
     return '<div class="reviewbar">' + rows + mrow + '</div>';
   }
 
-  /* ---- body sections ---------------------------------------------------- */
+  /* ---- body sections ----------------------------------------------------
+   * data-slot tags (added 2026-06-30): every leaf that carries a piece of
+   * authored copy is tagged with its dotted path under C.*. The review widget
+   * uses these to scope cross-LP comments (apply to this page / all pages
+   * with this slot / a subset). Tagging is leaf-level so a comment on a
+   * single FAQ answer doesn't drag the whole FAQ along with it. */
   function WhatWeDo() {
-    // headline (one-row H2) + paragraph (former intro, demoted) + existing line + bullets.
-    // Falls back to intro-as-headline if a content file hasn't been migrated yet.
     var headline = C.whatWeDo.headline || C.whatWeDo.intro;
-    var paragraph = C.whatWeDo.headline ? '<p class="wwd-lede">' + C.whatWeDo.intro + '</p>' : '';
+    var paragraph = C.whatWeDo.headline ? '<p class="wwd-lede" data-slot="whatWeDo.intro">' + C.whatWeDo.intro + '</p>' : '';
     return '' +
       '<div class="eyebrow">What we do</div>' +
-      '<h2 class="h2">' + headline + '</h2>' +
+      '<h2 class="h2" data-slot="whatWeDo.headline">' + headline + '</h2>' +
       paragraph +
       '<ol class="claim-list">' + C.whatWeDo.bullets.map(function (b, i) {
-        return '<li><span class="cn">' + pad2(i + 1) + '</span><span>' + b + '</span></li>';
+        return '<li data-slot="whatWeDo.bullets[' + i + ']"><span class="cn">' + pad2(i + 1) + '</span><span>' + b + '</span></li>';
       }).join("") + '</ol>';
   }
   function WhyChoose() {
     return '' +
       '<div class="eyebrow">Why Credo</div>' +
       '<h2 class="h2">Legal advice, not a fact sheet.</h2>' +
-      '<ul class="why" style="margin-top:28px">' + C.whyChoose.map(function (row) {
-        return '<li><p class="wl">' + row[0] + '</p><p class="wb">' + row[1] + '</p></li>';
+      '<ul class="why" style="margin-top:28px">' + C.whyChoose.map(function (row, i) {
+        return '<li><p class="wl" data-slot="whyChoose[' + i + '].label">' + row[0] + '</p><p class="wb" data-slot="whyChoose[' + i + '].body">' + row[1] + '</p></li>';
       }).join("") + '</ul>';
   }
   function CommonProblems(cols3) {
@@ -453,7 +494,7 @@
       '<div class="eyebrow">What we see</div>' +
       '<h2 class="h2">Common problems, and the line each one crosses.</h2>' +
       '<div class="box-grid' + (cols3 ? " cols3" : "") + '" style="margin-top:28px">' + C.commonProblems.map(function (row, i) {
-        return '<div class="box"><div class="bmeta"><span>' + pad2(i + 1) + '</span><span>' + row[2] + '</span></div><h3>' + row[0] + '</h3><p>' + row[1] + '</p></div>';
+        return '<div class="box"><div class="bmeta"><span>' + pad2(i + 1) + '</span><span data-slot="commonProblems[' + i + '].statute">' + row[2] + '</span></div><h3 data-slot="commonProblems[' + i + '].label">' + row[0] + '</h3><p data-slot="commonProblems[' + i + '].body">' + row[1] + '</p></div>';
       }).join("") + '</div>';
   }
   function HowItWorks(cols) {
@@ -461,17 +502,17 @@
       '<div class="eyebrow">How it works</div>' +
       '<h2 class="h2">A clear sequence, on a known timeline.</h2>' +
       '<div class="process' + (cols ? " cols" : "") + '" style="margin-top:28px">' + C.howItWorks.map(function (row, i) {
-        return '<div class="step"><div class="n">' + pad2(i + 1) + '</div><div><h3>' + row[0] + '</h3><p>' + row[1] + '</p><div class="when">' + row[2] + '</div></div></div>';
+        return '<div class="step"><div class="n">' + pad2(i + 1) + '</div><div><h3 data-slot="howItWorks[' + i + '].label">' + row[0] + '</h3><p data-slot="howItWorks[' + i + '].body">' + row[1] + '</p><div class="when" data-slot="howItWorks[' + i + '].timeMarker">' + row[2] + '</div></div></div>';
       }).join("") + '</div>';
   }
   function Rights() {
     return '' +
       '<div class="eyebrow">Your rights</div>' +
-      '<h2 class="h2">' + C.rights.intro + '</h2>' +
-      '<div class="rights" style="margin-top:28px">' + C.rights.items.map(function (r) {
+      '<h2 class="h2" data-slot="rights.intro">' + C.rights.intro + '</h2>' +
+      '<div class="rights" style="margin-top:28px">' + C.rights.items.map(function (r, i) {
         return '<div class="right">' +
-          '<div class="gut">' + r.cite + '<span class="b">' + r.label + '</span></div>' +
-          '<div><h3>' + r.text + '</h3><div class="ex"><div class="exl">' + r.exLabel + '</div><p>' + r.ex + '</p></div></div>' +
+          '<div class="gut"><span data-slot="rights.items[' + i + '].cite">' + r.cite + '</span><span class="b" data-slot="rights.items[' + i + '].label">' + r.label + '</span></div>' +
+          '<div><h3 data-slot="rights.items[' + i + '].text">' + r.text + '</h3><div class="ex"><div class="exl">' + r.exLabel + '</div><p data-slot="rights.items[' + i + '].ex">' + r.ex + '</p></div></div>' +
         '</div>';
       }).join("") + '</div>';
   }
@@ -480,15 +521,15 @@
       '<div class="eyebrow">Who this helps</div>' +
       '<h2 class="h2">You\'ll recognize your own situation here.</h2>' +
       '<ul class="who-list" style="margin-top:28px">' + C.whoHelps.map(function (w, i) {
-        return '<li><span class="wn">' + pad2(i + 1) + '</span><span>' + w + '</span></li>';
+        return '<li data-slot="whoHelps[' + i + ']"><span class="wn">' + pad2(i + 1) + '</span><span>' + w + '</span></li>';
       }).join("") + '</ul>';
   }
   function FAQ() {
     return '' +
       '<div class="eyebrow">Frequently asked</div>' +
       '<h2 class="h2">Questions, answered plainly.</h2>' +
-      '<div class="faq faq-static" style="margin-top:28px">' + C.faq.map(function (qa) {
-        return '<div class="qa open"><div class="q">' + qa[0] + '</div><div class="a"><p>' + qa[1] + '</p></div></div>';
+      '<div class="faq faq-static" style="margin-top:28px">' + C.faq.map(function (qa, i) {
+        return '<div class="qa open"><div class="q" data-slot="faq[' + i + '].question">' + qa[0] + '</div><div class="a"><p data-slot="faq[' + i + '].answer">' + qa[1] + '</p></div></div>';
       }).join("") + '</div>';
   }
   function InlineCTA(label) {
@@ -499,9 +540,9 @@
       '<section class="bottom-cta" id="begin"><div class="container">' +
         SectionNo("99", "Closing") +
         '<div class="eyebrow">Ready when you are</div>' +
-        '<h2>Know your rights before you make any <em>decision</em>.</h2>' +
-        '<p>' + C.bottomCta.body + '</p>' +
-        '<button class="btn-stamp" data-scrollform>' + C.bottomCta.cta + ' ' + Ico.arrow + '</button>' +
+        '<h2 data-slot="bottomCta.headline">Know your rights before you make any <em>decision</em>.</h2>' +
+        '<p data-slot="bottomCta.body">' + C.bottomCta.body + '</p>' +
+        '<button class="btn-stamp" data-slot="bottomCta.cta" data-scrollform>' + C.bottomCta.cta + ' ' + Ico.arrow + '</button>' +
         '<div class="bphone">Or call <a href="' + C.phoneHref + '">' + C.phone + '</a></div>' +
       '</div></section>';
   }
@@ -513,7 +554,7 @@
           '<div class="flinks"><a href="#">About</a><a href="#">Contact</a><a href="#">Privacy</a><a href="#">Disclaimer</a></div>' +
           '<span class="fmeta">© 2026 · ATTORNEY ADVERTISING</span>' +
         '</div>' +
-        '<p class="disclaimer">' + C.disclaimer + ' Credo Legal is a multi-jurisdictional law firm. Communication through this site does not create an attorney–client relationship. Not a debt-settlement company. Not a credit-counseling service.</p>' +
+        '<p class="disclaimer" data-slot="disclaimer">' + C.disclaimer + ' Credo Legal is a multi-jurisdictional law firm. Communication through this site does not create an attorney–client relationship. Not a debt-settlement company. Not a credit-counseling service.</p>' +
         '<p class="state-excl">' + C.form.stateExclusion + '</p>' +
       '</div></footer>';
   }
@@ -534,9 +575,9 @@
           '<div class="hero-grid">' +
             '<div>' +
               heroEyebrow() +
-              '<h1 class="h1">' + renderH1(C.hero.h1) + '</h1>' +
-              '<p class="lede">' + C.hero.lede + '</p>' +
-              '<p class="form-fine" style="margin:0 0 22px">' + C.hero.filler + '</p>' +
+              '<h1 class="h1" data-slot="hero.h1">' + renderH1(C.hero.h1) + '</h1>' +
+              '<p class="lede" data-slot="hero.lede">' + C.hero.lede + '</p>' +
+              '<p class="form-fine" data-slot="hero.filler" style="margin:0 0 22px">' + C.hero.filler + '</p>' +
               LeadForm() +
               '<a class="hero-call" href="' + C.phoneHref + '" style="display:inline-block;margin-top:18px">Or call <b>' + C.phone + '</b></a>' +
             '</div>' +
@@ -825,6 +866,13 @@
     wireScrollForm(root);
     wireInlineForm();
     window.addEventListener("keydown", onKey);
+
+    /* Publish the slot catalog (added 2026-06-30 for cross-LP comment scoping).
+     * Done after render so buildSlotCatalog() can introspect rendered C.*. */
+    window.CREDO_SLOTS = {
+      declared: buildSlotCatalog(),
+      broadcastDefaultPrefixes: BROADCAST_DEFAULT_PREFIXES
+    };
   }
 
   window.CredoLP = { render: render };

@@ -103,6 +103,58 @@ function pageMatches(commentPage){
   }
   return true;
 }
+
+/* ───── Cross-LP slot-portable commenting (added 2026-06-30) ──────────────────
+ * A comment left on a slot-tagged element (data-slot="hero.h1" etc.) can opt
+ * to apply across many LPs. The composer asks the reviewer at write time
+ * which pages it applies to and stores the choice on the record:
+ *
+ *   { slot: 'hero.h1', scope: 'all' }                  // every LP with hero.h1
+ *   { slot: 'hero.h1', scope: ['attorney-…','stop-…'] } // explicit subset
+ *   (no slot field)                                     // page-local (legacy)
+ *
+ * Filter logic: commentAppliesHere() shows untagged comments on their origin
+ * page only (page === SLUG); shows slot-portable comments wherever the
+ * current LP both has the slot AND is in the scope. The hub injects the LP
+ * catalog via postMessage so the chooser can show counts + a picker. */
+const LP_CATALOG = []; // populated by postMessage from the hub
+window.addEventListener('message', e => {
+  if(!e || !e.data || e.data.type !== 'credo:lp-catalog') return;
+  if(!Array.isArray(e.data.catalog)) return;
+  LP_CATALOG.length = 0;
+  for(const lp of e.data.catalog) LP_CATALOG.push(lp);
+  // refresh sidebar counts so "applies to N pages" badges land correct.
+  if(typeof render === 'function') render();
+});
+function _slots(){ return (window.CREDO_SLOTS && Array.isArray(window.CREDO_SLOTS.declared)) ? window.CREDO_SLOTS.declared : []; }
+function _broadcastPrefixes(){ return (window.CREDO_SLOTS && Array.isArray(window.CREDO_SLOTS.broadcastDefaultPrefixes)) ? window.CREDO_SLOTS.broadcastDefaultPrefixes : []; }
+function hasSlot(slot){ return _slots().indexOf(slot) >= 0; }
+function defaultScopeForSlot(slot){
+  if(!slot) return 'single';
+  const prefixes = _broadcastPrefixes();
+  for(const p of prefixes){ if(slot.indexOf(p) === 0) return 'all'; }
+  return 'single';
+}
+function commentAppliesHere(c){
+  if(!c) return false;
+  // 1) legacy single-page (no slot): match the page filter as before.
+  if(!c.slot) return pageMatches(c.page);
+  // 2) slot-portable: this LP must actually have the slot…
+  if(!hasSlot(c.slot)) return false;
+  // 3) …and the current SLUG must be in the comment's scope.
+  if(c.scope === 'all') return true;
+  if(Array.isArray(c.scope)) return c.scope.indexOf(SLUG) >= 0;
+  // No scope, just slot: treat as 'all' (defensive — shouldn't happen).
+  return true;
+}
+function scopeCountText(slot, scope){
+  if(scope === 'all'){
+    const n = LP_CATALOG.length || 1;
+    return 'all ' + n + ' page' + (n === 1 ? '' : 's') + ' with this slot';
+  }
+  if(Array.isArray(scope)) return scope.length + ' selected page' + (scope.length === 1 ? '' : 's');
+  return 'this page only';
+}
 function reviewer(){let n=store.get('credo_reviewer');if(!n){n=(window.prompt(L.namePrompt,'')||'Anonymous').trim()||'Anonymous';store.set('credo_reviewer',n);}return n;}
 
 /* status normalize (reader shim for legacy boolean records) */
@@ -232,16 +284,85 @@ function anchorImagePass(){
   });
 }
 
-function modal(title,ctx,initText,initRepl,onSave){
+function modal(title,ctx,initText,initRepl,onSave,opts){
+  opts = opts || {};
   const ov=el('div','review-modal-overlay');const m=el('div','review-modal');
   m.innerHTML='<h4>'+esc(title)+'</h4><div class="rw-ctx">'+esc(ctx)+'</div>';
   const ta=el('textarea');ta.placeholder=L.placeholder;ta.value=initText||'';
   const tr=el('textarea');tr.placeholder=L.replacementPlaceholder;tr.value=initRepl||'';tr.style.minHeight='44px';
+  m.appendChild(ta);m.appendChild(tr);
+  /* Scope chooser (added 2026-06-30 for cross-LP commenting). Only shown when
+   * opts.slot is provided (anchored element had data-slot). Three radios; the
+   * "Specific pages…" choice expands a checkbox list. State held inside the
+   * modal; passed to onSave as a third arg. */
+  let scopeChoice = opts.defaultScope || 'single';
+  let pickedPages = [];
+  if(opts.slot){
+    const sc = el('div','rw-scope');
+    const slotPills = opts.slot ? '<span class="rw-scope-slot">slot · '+esc(opts.slot)+'</span>' : '';
+    sc.innerHTML = '<div class="rw-scope-head">Apply this comment to '+slotPills+'</div>';
+    const rGroup = el('div','rw-scope-radios');
+    function radio(value, label, hint){
+      const id = 'rw-scope-'+value;
+      const r = '<label class="rw-scope-opt"><input type="radio" name="rw-scope" value="'+value+'"' + (value===scopeChoice?' checked':'') + '/> <span class="rw-scope-lbl">'+esc(label)+'</span>' + (hint?' <span class="rw-scope-hint">'+esc(hint)+'</span>':'') + '</label>';
+      return r;
+    }
+    const otherCount = LP_CATALOG.length || 0;
+    rGroup.innerHTML =
+      radio('single', 'This page only', '(' + SLUG + ')') +
+      radio('all',    'All pages that have this slot', otherCount ? '(' + otherCount + ' pages)' : '') +
+      radio('subset', 'Specific pages…',  otherCount ? '(' + otherCount + ' available)' : '(catalog unavailable)');
+    sc.appendChild(rGroup);
+    const picker = el('div','rw-scope-picker');
+    picker.style.display = 'none';
+    /* Group catalog by cluster and render checkboxes; current page is checked + locked. */
+    if(LP_CATALOG.length){
+      const byCluster = {};
+      LP_CATALOG.forEach(lp => { (byCluster[lp.cluster] = byCluster[lp.cluster] || []).push(lp); });
+      let html = '';
+      Object.keys(byCluster).forEach(cluster => {
+        html += '<div class="rw-scope-cluster">'+esc(cluster)+'</div>';
+        byCluster[cluster].forEach(lp => {
+          const isSelf = lp.slug === SLUG;
+          html += '<label class="rw-scope-page"><input type="checkbox" value="'+esc(lp.slug)+'"' + (isSelf?' checked disabled':'') + '/> '+esc(lp.name)+' <span class="rw-scope-page-slug">'+esc(lp.slug)+'</span></label>';
+        });
+      });
+      picker.innerHTML = html;
+    } else {
+      picker.innerHTML = '<div class="rw-scope-empty">No catalog received (open via the hub for cross-LP scope).</div>';
+    }
+    sc.appendChild(picker);
+    m.appendChild(sc);
+    rGroup.addEventListener('change', e => {
+      if(e.target && e.target.name === 'rw-scope'){
+        scopeChoice = e.target.value;
+        picker.style.display = (scopeChoice === 'subset') ? 'block' : 'none';
+      }
+    });
+    if(scopeChoice === 'subset') picker.style.display = 'block';
+    picker.addEventListener('change', () => {
+      pickedPages = Array.from(picker.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+    });
+  }
   const acts=el('div','rw-modal-acts');
   const cancel=el('button','rw-cancel',esc(L.cancel));cancel.onclick=()=>ov.remove();
   const save=el('button','rw-save',esc(L.save));
-  save.onclick=()=>{const t=ta.value.trim(),r=tr.value.trim();if(!t&&!r)return;onSave(t,r);ov.remove()};
-  acts.appendChild(cancel);acts.appendChild(save);m.appendChild(ta);m.appendChild(tr);m.appendChild(acts);ov.appendChild(m);
+  save.onclick=()=>{
+    const t=ta.value.trim(),r=tr.value.trim();
+    if(!t&&!r)return;
+    let resolvedScope = null;
+    if(opts.slot){
+      if(scopeChoice === 'all') resolvedScope = 'all';
+      else if(scopeChoice === 'subset'){
+        const subset = pickedPages.length ? pickedPages.slice() : [SLUG];
+        if(subset.indexOf(SLUG) < 0) subset.push(SLUG);
+        resolvedScope = subset;
+      } // 'single' → leave resolvedScope null (page-local)
+    }
+    onSave(t, r, resolvedScope);
+    ov.remove();
+  };
+  acts.appendChild(cancel);acts.appendChild(save);m.appendChild(acts);ov.appendChild(m);
   ov.onclick=e=>{if(e.target===ov)ov.remove()};document.body.appendChild(ov);ta.focus();
 }
 function openComposer(anchor,elm){
@@ -251,21 +372,50 @@ function openComposer(anchor,elm){
    * dimension the anchored element varies along (data-variant-scope). For an
    * untagged element, effectivePage === SLUG and behaviour is unchanged. */
   const pageKey = effectivePage(elm);
-  modal('Add comment',anchor,'','',(text,repl)=>ADAPTER.create({comment:text,replacement:repl||null,anchor:anchor,page:pageKey,author:ME,status:'pending',timestamp:Date.now(),text_preview:prev,url:location.href,user_agent:navigator.userAgent}));
+  /* Slot lookup (added 2026-06-30): walk up to the nearest [data-slot]. If
+   * present, the composer offers cross-LP scope. */
+  const slotCarrier = elm.closest && elm.closest('[data-slot]');
+  const slot = slotCarrier ? slotCarrier.getAttribute('data-slot') : null;
+  const defaultScope = defaultScopeForSlot(slot);
+  modal('Add comment', anchor, '', '', (text, repl, scope) => {
+    const rec = {
+      comment: text, replacement: repl || null,
+      anchor: anchor, page: pageKey,
+      author: ME, status: 'pending', timestamp: Date.now(),
+      text_preview: prev, url: location.href, user_agent: navigator.userAgent
+    };
+    if(slot){
+      rec.slot = slot;
+      // 'single' (default) leaves scope undefined → behaves as page-local.
+      if(scope) rec.scope = scope;
+    }
+    ADAPTER.create(rec);
+  }, { slot: slot, defaultScope: defaultScope });
 }
 
 function actBtn(label,cls,fn){const b=el('button',cls,esc(label));b.onclick=ev=>{ev.stopPropagation();fn()};return b;}
 function render(){
-  /* Variant-aware filter: untagged comments (page === SLUG) always show;
-   * tagged comments show only when every dim/value in their page key matches
-   * the page's current dimension state via pageMatches(). */
-  const all=Object.entries(COMMENTS).filter(([id,c])=>c && pageMatches(c.page));
+  /* Filter cascade (oldest → newest behaviour):
+   *  1. commentAppliesHere() handles slot-portable comments (cross-LP scope).
+   *  2. Falls through to pageMatches() for legacy single-page records.
+   * Untagged comments behave exactly as before; slot-portable comments show
+   * on every LP whose CREDO_SLOTS.declared includes the slot AND whose SLUG
+   * is in the comment's scope. */
+  const all=Object.entries(COMMENTS).filter(([id,c])=> c && commentAppliesHere(c));
   const counts={pending:0,resolved:0};
   all.forEach(([id,c])=>{counts[statusOf(c)]=(counts[statusOf(c)]||0)+1});
   TABS.querySelectorAll('button').forEach(b=>{b.querySelector('.rw-c').textContent=counts[TAB_OF[b.dataset.k]]||0;});
-  // outlines
+  // outlines — when a comment has c.slot, attach to elements with that slot
+  // on the current page (the slot is stable across LPs; the anchor isn't).
   document.querySelectorAll('.has-comment,.has-applied-comment').forEach(e=>e.classList.remove('has-comment','has-applied-comment'));
-  all.forEach(([id,c])=>{const st=statusOf(c);if(st==='archived')return;const sel='[data-comment-id="'+(window.CSS&&CSS.escape?CSS.escape(c.anchor):c.anchor)+'"]';document.querySelectorAll(sel).forEach(a=>a.classList.add(st==='applied'?'has-applied-comment':'has-comment'))});
+  all.forEach(([id,c])=>{
+    const st=statusOf(c);
+    if(st==='archived')return;
+    const sel = c.slot
+      ? '[data-slot="'+(window.CSS&&CSS.escape?CSS.escape(c.slot):c.slot)+'"]'
+      : '[data-comment-id="'+(window.CSS&&CSS.escape?CSS.escape(c.anchor):c.anchor)+'"]';
+    document.querySelectorAll(sel).forEach(a=>a.classList.add(st==='applied'?'has-applied-comment':'has-comment'));
+  });
   // list for current tab
   const want=TAB_OF[FILTER];
   const rows=all.filter(([id,c])=>statusOf(c)===want).sort((a,b)=>(a[1].timestamp||0)-(b[1].timestamp||0));
@@ -275,11 +425,22 @@ function render(){
     const st=statusOf(c);
     const row=el('div','review-row'+(id===SELID?' rw-selected':''));
     const blabel=st==='resolved'?'resolved':'open';
-    row.innerHTML='<div class="rw-meta"><b>'+esc(c.author||'Anonymous')+'</b><span class="rw-badge rw-'+st+'">'+blabel+'</span><span>'+when(c.timestamp)+(c.edited_at?' · edited':'')+'</span></div>'+
+    /* Scope badge (added 2026-06-30): if the comment is slot-portable, show
+     * a small green chip stating which pages it applies to, so the reviewer
+     * scanning the sidebar can tell page-local from brand-wide at a glance. */
+    let scopeBadge = '';
+    if(c.slot){
+      let n;
+      if(c.scope === 'all') n = (LP_CATALOG.length || 1);
+      else if(Array.isArray(c.scope)) n = c.scope.length;
+      else n = 1;
+      scopeBadge = ' <span class="rw-scope-badge" title="'+esc(c.slot)+'">applies to '+n+' page'+(n===1?'':'s')+'</span>';
+    }
+    row.innerHTML='<div class="rw-meta"><b>'+esc(c.author||'Anonymous')+'</b><span class="rw-badge rw-'+st+'">'+blabel+'</span>'+scopeBadge+'<span>'+when(c.timestamp)+(c.edited_at?' · edited':'')+'</span></div>'+
       '<div class="rw-body">'+esc(c.comment||'')+'</div>'+
       (c.replacement?'<div class="rw-repl">↳ '+esc(c.replacement)+'</div>':'')+
       (st==='resolved'&&c.resolution?'<div class="rw-resolution">✓ '+esc(c.resolution)+'</div>':'')+
-      '<div class="rw-anchor">'+esc(c.anchor)+'</div>';
+      '<div class="rw-anchor">'+esc(c.slot ? ('slot · '+c.slot) : c.anchor)+'</div>';
     const acts=el('div','rw-acts');
     if(st==='pending'){
       acts.appendChild(actBtn(L.edit,'edit-btn',()=>modal('Edit comment',c.anchor,c.comment||'',c.replacement||'',(t,r)=>ADAPTER.update(id,{comment:t,replacement:r||null,edited_at:Date.now()}))));
@@ -289,7 +450,7 @@ function render(){
     }
     acts.appendChild(actBtn(L.del,'delete-btn',()=>{if(confirm('Delete this comment?'))ADAPTER.remove(id)}));
     row.appendChild(acts);
-    row.onclick=()=>{SELID=id;spotlight(c.anchor);};
+    row.onclick=()=>{SELID=id;spotlight(c);};
     LIST.appendChild(row);
   });
   applyActive();
@@ -303,13 +464,20 @@ function applyActive(){
   const sel='[data-comment-id="'+(window.CSS&&CSS.escape?CSS.escape(SELANCHOR):SELANCHOR)+'"]';
   document.querySelectorAll(sel).forEach(a=>a.classList.add('rw-active-anchor'));
 }
-function spotlight(anchor){
-  SELANCHOR=anchor;
+function spotlight(anchorOrComment){
+  /* Accepts either a bare anchor string (legacy) or a comment record (so we
+   * can prefer slot-based lookup for cross-LP comments). Falls back to the
+   * anchor when no slot is available. */
+  let anchor, slot;
+  if(typeof anchorOrComment === 'string'){ anchor = anchorOrComment; }
+  else if(anchorOrComment){ anchor = anchorOrComment.anchor; slot = anchorOrComment.slot; }
+  SELANCHOR = slot || anchor;
   let a=null;
   /* the prototype exposes __rwReveal: it flips the right dropdown/tab so the
    * commented variant is on screen, then returns that zone's element. */
-  if(window.__rwReveal){try{a=window.__rwReveal(anchor)}catch(e){}}
-  if(!a)a=document.querySelector('[data-comment-id="'+(window.CSS&&CSS.escape?CSS.escape(anchor):anchor)+'"]');
+  if(window.__rwReveal){try{a=window.__rwReveal(SELANCHOR)}catch(e){}}
+  if(!a && slot) a = document.querySelector('[data-slot="'+(window.CSS&&CSS.escape?CSS.escape(slot):slot)+'"]');
+  if(!a) a = document.querySelector('[data-comment-id="'+(window.CSS&&CSS.escape?CSS.escape(anchor):anchor)+'"]');
   applyActive();
   if(!a)return;
   a.scrollIntoView({behavior:'smooth',block:'center'});

@@ -84,3 +84,23 @@
 [data-review-mode="on"] .rw-badge.rw-resolved{background:#e7f3ea;color:#2f7d4e}
 [data-review-mode="on"] .review-row .rw-resolution{margin-top:5px;font-size:12.5px;color:#2f7d4e;background:#eef7f0;border-left:3px solid #2f7d4e;padding:4px 7px;border-radius:3px}
 [data-review-mode="on"] .review-row .resolve-btn:hover{color:#2f7d4e}
+
+/* ───── Cross-LP scope chooser (added 2026-06-30) ─────────────────────────── */
+[data-review-mode="on"] .review-modal .rw-scope{margin:6px 0 4px;border-top:1px dashed #ddd;padding-top:10px}
+[data-review-mode="on"] .review-modal .rw-scope-head{font:600 12.5px/1.3 -apple-system,sans-serif;color:#1f2330;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+[data-review-mode="on"] .review-modal .rw-scope-slot{font:600 10px/1 ui-monospace,Menlo,monospace;background:#f1eef8;color:#4a4a99;padding:3px 7px;border-radius:4px;letter-spacing:.02em}
+[data-review-mode="on"] .review-modal .rw-scope-radios{display:flex;flex-direction:column;gap:6px}
+[data-review-mode="on"] .review-modal .rw-scope-opt{display:flex;align-items:center;gap:8px;font:13.5px -apple-system,sans-serif;color:#1f2330;cursor:pointer;padding:2px 0}
+[data-review-mode="on"] .review-modal .rw-scope-opt input{accent-color:#DC4646}
+[data-review-mode="on"] .review-modal .rw-scope-lbl{font-weight:500}
+[data-review-mode="on"] .review-modal .rw-scope-hint{color:#65676b;font-size:12px}
+[data-review-mode="on"] .review-modal .rw-scope-picker{margin-top:10px;max-height:200px;overflow-y:auto;border:1px solid #eceef0;padding:8px 10px;border-radius:6px;background:#fafbfc}
+[data-review-mode="on"] .review-modal .rw-scope-empty{font-size:12px;color:#828a93;font-style:italic}
+[data-review-mode="on"] .review-modal .rw-scope-cluster{font:700 10px/1 -apple-system,sans-serif;color:#DC4646;letter-spacing:.1em;text-transform:uppercase;margin:8px 0 4px}
+[data-review-mode="on"] .review-modal .rw-scope-cluster:first-child{margin-top:0}
+[data-review-mode="on"] .review-modal .rw-scope-page{display:flex;align-items:center;gap:7px;font:12.5px -apple-system,sans-serif;color:#1f2330;padding:3px 0;cursor:pointer}
+[data-review-mode="on"] .review-modal .rw-scope-page input{accent-color:#DC4646}
+[data-review-mode="on"] .review-modal .rw-scope-page-slug{color:#828a93;font:10.5px ui-monospace,Menlo,monospace}
+
+/* Sidebar scope badge */
+[data-review-mode="on"] .review-row .rw-scope-badge{background:#eef7f0;color:#2f7d4e;border-radius:6px;padding:1px 7px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:help}

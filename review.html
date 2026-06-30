@@ -352,6 +352,30 @@ document.getElementById('mix').addEventListener('click', e => {
   const [h, w] = btn.dataset.mix.split('-');
   setMix(h, w);
 });
+/* Slimmed-down catalog for the cross-LP comment feature. The widget in each
+ * iframe asks "all pages with this slot? which ones?" — the answer is the
+ * catalog the hub already has. We inject it via postMessage when the iframe
+ * finishes loading so the widget can reference it in the composer's scope
+ * chooser. The hub remains the single source of truth for "which LPs exist". */
+function lpCatalogForWidget() {
+  return LPS.map(lp => ({
+    slug: lp.file.replace(/\.html$/, ''),   // matches pageSlug() derivation in review-mode.js
+    name: lp.n,
+    cluster: lp.c,
+    angle: lp.angle || ''
+  }));
+}
+function postCatalogToIframe() {
+  try {
+    if (!$frame.contentWindow) return;
+    $frame.contentWindow.postMessage({
+      type: 'credo:lp-catalog',
+      catalog: lpCatalogForWidget()
+    }, '*');
+  } catch (e) { /* sandboxed iframe / cross-origin — fall back to single-page only */ }
+}
+$frame.addEventListener('load', postCatalogToIframe);
+
 function select(idx) {
   if (idx < 0 || idx >= LPS.length) return;
   current = idx;

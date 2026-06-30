@@ -71,7 +71,10 @@ window.CREDO = {
     bullets: [
       "Send a legal cease letter to the collector the day you enroll.",
       "Fight against credit card collector harassment under the FDCPA.",
-      "Track every violation for your case.",
+      // 2026-06-30 (Sona attorney-LP precedent, propagated): verb changed to
+      // "Document" + "you report" added, matching the attorney LP's
+      // whatWeDo.bullets[1] wording so the cluster reads consistently.
+      "Document every violation you report for your case.",
       "Hold collectors accountable for every illegal contact.",
     ],
   },
