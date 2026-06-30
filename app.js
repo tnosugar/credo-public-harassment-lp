@@ -484,7 +484,10 @@
   function WhyChoose() {
     return '' +
       '<div class="eyebrow">Why Credo</div>' +
-      '<h2 class="h2">Legal advice, not a fact sheet.</h2>' +
+      // 2026-06-30 (Sona, h2-2): "not a fact sheet" → "not debt consolidation".
+      // Applies to every LP because this heading is rendered here, not in the
+      // per-LP content files.
+      '<h2 class="h2">Legal advice, not debt consolidation.</h2>' +
       '<ul class="why" style="margin-top:28px">' + C.whyChoose.map(function (row, i) {
         return '<li><p class="wl" data-slot="whyChoose[' + i + '].label">' + row[0] + '</p><p class="wb" data-slot="whyChoose[' + i + '].body">' + row[1] + '</p></li>';
       }).join("") + '</ul>';
@@ -494,7 +497,7 @@
       '<div class="eyebrow">What we see</div>' +
       '<h2 class="h2">Common problems, and the line each one crosses.</h2>' +
       '<div class="box-grid' + (cols3 ? " cols3" : "") + '" style="margin-top:28px">' + C.commonProblems.map(function (row, i) {
-        return '<div class="box"><div class="bmeta"><span>' + pad2(i + 1) + '</span><span data-slot="commonProblems[' + i + '].statute">' + row[2] + '</span></div><h3 data-slot="commonProblems[' + i + '].label">' + row[0] + '</h3><p data-slot="commonProblems[' + i + '].body">' + row[1] + '</p></div>';
+        return '<div class="box" id="cp-' + i + '"><div class="bmeta"><span>' + pad2(i + 1) + '</span><span data-slot="commonProblems[' + i + '].statute">' + row[2] + '</span></div><h3 data-slot="commonProblems[' + i + '].label">' + row[0] + '</h3><p data-slot="commonProblems[' + i + '].body">' + row[1] + '</p></div>';
       }).join("") + '</div>';
   }
   function HowItWorks(cols) {
@@ -529,7 +532,7 @@
       '<div class="eyebrow">Frequently asked</div>' +
       '<h2 class="h2">Questions, answered plainly.</h2>' +
       '<div class="faq faq-static" style="margin-top:28px">' + C.faq.map(function (qa, i) {
-        return '<div class="qa open"><div class="q" data-slot="faq[' + i + '].question">' + qa[0] + '</div><div class="a"><p data-slot="faq[' + i + '].answer">' + qa[1] + '</p></div></div>';
+        return '<div class="qa open" id="faq-' + i + '"><div class="q" data-slot="faq[' + i + '].question">' + qa[0] + '</div><div class="a"><p data-slot="faq[' + i + '].answer">' + qa[1] + '</p></div></div>';
       }).join("") + '</div>';
   }
   function InlineCTA(label) {
